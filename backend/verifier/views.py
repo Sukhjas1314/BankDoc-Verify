@@ -4,8 +4,7 @@ from django.conf import settings
 from django.core.files import File
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser
@@ -39,7 +38,7 @@ def csrf(request):
 
 @api_view(["POST"])
 @parser_classes([MultiPartParser])
-@csrf_protect
+@csrf_exempt
 def upload_file(request):
     uploaded = request.FILES.get("file")
     if not uploaded:
@@ -52,7 +51,7 @@ def upload_file(request):
 
 
 @api_view(["POST"])
-@csrf_protect
+@csrf_exempt
 def extract_file(request):
     uploaded = get_object_or_404(UploadedFile, pk=request.data.get("uploaded_file_id"))
     try:
@@ -67,7 +66,7 @@ def extract_file(request):
 
 
 @api_view(["POST"])
-@csrf_protect
+@csrf_exempt
 def validate_file(request):
     uploaded = get_object_or_404(UploadedFile, pk=request.data.get("uploaded_file_id"))
     try:

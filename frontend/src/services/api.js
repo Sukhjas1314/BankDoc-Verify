@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
-  withCredentials: true
+  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
+  withCredentials: true,
 });
 
 function readCookie(name) {
@@ -33,7 +33,7 @@ export function getDashboard() {
 export function uploadReport(file) {
   const form = new FormData();
   form.append("file", file);
-  return api.post("/upload/", form, { headers: { "Content-Type": "multipart/form-data" } });
+  return api.post("/upload/", form);
 }
 
 export function extractReport(uploadedFileId) {

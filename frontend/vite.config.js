@@ -4,10 +4,17 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   test: {
     environment: "jsdom",
-    setupFiles: "./src/test-setup.js"
-  }
+    setupFiles: "./src/test-setup.js",
+  },
 });
