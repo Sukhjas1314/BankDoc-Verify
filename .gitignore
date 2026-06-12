@@ -1,0 +1,12 @@
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+db.sqlite3
+media/uploads/*
+media/reports/*
+!media/uploads/.gitkeep
+!media/reports/.gitkeep
+.env

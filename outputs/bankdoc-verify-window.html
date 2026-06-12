@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BankDoc Verify</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --blue: #1d4ed8;
+        --ink: #0f172a;
+        --line: #d8e1ef;
+        --muted: #64748b;
+        --bg: #f8fafc;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink); }
+      header { height: 64px; border-bottom: 1px solid var(--line); background: white; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
+      .brand { font-size: 18px; font-weight: 700; }
+      nav { display: flex; gap: 8px; }
+      nav button, .btn { border: 0; border-radius: 6px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+      nav button { background: transparent; color: #475569; }
+      nav button.active { color: var(--blue); background: #eff6ff; }
+      main { max-width: 1180px; margin: 0 auto; padding: 28px; }
+      h1 { margin: 0; font-size: 32px; letter-spacing: 0; }
+      p { color: var(--muted); line-height: 1.5; }
+      .grid { display: grid; gap: 16px; }
+      .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .card { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+      .stat-label { color: #475569; font-size: 14px; font-weight: 700; }
+      .stat-value { margin-top: 8px; font-size: 34px; font-weight: 800; }
+      .drop { border: 2px dashed var(--line); border-radius: 8px; background: white; padding: 42px 22px; text-align: center; }
+      .drop.drag { border-color: var(--blue); background: #eff6ff; }
+      .btn.primary { background: var(--blue); color: white; }
+      .btn.secondary { border: 1px solid var(--line); background: white; color: #334155; }
+      .btn:disabled { background: #cbd5e1; color: white; cursor: not-allowed; }
+      .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+      .file-pill { display: inline-flex; margin-top: 18px; padding: 9px 12px; border: 1px solid #a7f3d0; border-radius: 6px; background: #ecfdf5; color: #047857; font-size: 14px; font-weight: 700; }
+      table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+      th { background: #f1f5f9; color: #475569; font-size: 12px; text-transform: uppercase; }
+      .badge { display: inline-flex; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 800; text-transform: capitalize; }
+      .high { background: #fee2e2; color: #b91c1c; }
+      .medium { background: #fef3c7; color: #b45309; }
+      .low { background: #dbeafe; color: #1d4ed8; }
+      .toolbar { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 22px; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+      .hidden { display: none; }
+      @media (max-width: 760px) {
+        header { padding: 0 14px; }
+        main { padding: 18px; }
+        .stats { grid-template-columns: 1fr; }
+        .toolbar { display: block; }
+        table { display: block; overflow-x: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">BankDoc Verify</div>
+      <nav>
+        <button data-view="dashboard" class="active">Dashboard</button>
+        <button data-view="upload">Upload</button>
+        <button data-view="history">History</button>
+      </nav>
+    </header>
+    <main>
+      <section id="dashboard">
+        <div class="toolbar">
+          <div>
+            <h1>Dashboard</h1>
+            <p>Operational view of local report validations.</p>
+          </div>
+          <button class="btn primary" data-view="upload">New validation</button>
+        </div>
+        <div class="grid stats">
+          <div class="card"><div class="stat-label">Files processed</div><div id="files" class="stat-value">0</div></div>
+          <div class="card"><div class="stat-label">Validations</div><div id="runs" class="stat-value">0</div></div>
+          <div class="card"><div class="stat-label">Passed</div><div id="passed" class="stat-value">0</div></div>
+          <div class="card"><div class="stat-label">Failed</div><div id="failed" class="stat-value">0</div></div>
+        </div>
+      </section>
+
+      <section id="upload" class="hidden">
+        <div id="drop" class="drop">
+          <h1>Upload banking report</h1>
+          <p>PDF, XLSX, or CSV reports up to 25 MB can be selected here. This window-local mode validates the workflow and produces a report summary without a running localhost server.</p>
+          <input id="file" type="file" accept=".pdf,.xlsx,.csv,application/pdf,text/csv" class="hidden" />
+          <div id="selected" class="file-pill hidden"></div>
+          <div class="actions">
+            <button id="select" class="btn secondary">Select file</button>
+            <button id="validate" class="btn primary" disabled>Upload and validate</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="results" class="hidden">
+        <div class="toolbar">
+          <div>
+            <h1>Validation results</h1>
+            <p id="resultFile"></p>
+          </div>
+          <button id="download" class="btn primary">Download report</button>
+        </div>
+        <div class="grid stats">
+          <div class="card"><div class="stat-label">Status</div><div id="status" class="stat-value">Failed</div></div>
+          <div class="card"><div class="stat-label">Passed checks</div><div id="passedChecks" class="stat-value">0</div></div>
+          <div class="card"><div class="stat-label">Failed checks</div><div id="failedChecks" class="stat-value">0</div></div>
+          <div class="card"><div class="stat-label">Total checks</div><div id="totalChecks" class="stat-value">0</div></div>
+        </div>
+        <div style="height: 18px"></div>
+        <table>
+          <thead><tr><th>Type</th><th>Severity</th><th>Description</th><th>Expected</th><th>Actual</th></tr></thead>
+          <tbody id="issues"></tbody>
+        </table>
+      </section>
+
+      <section id="history" class="hidden">
+        <div class="toolbar">
+          <div>
+            <h1>History</h1>
+            <p>Completed validation runs in this browser window.</p>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>File name</th><th>Upload date</th><th>Status</th><th>Checks</th></tr></thead>
+          <tbody id="historyRows"></tbody>
+        </table>
+      </section>
+    </main>
+    <script>
+      const state = { files: [], runs: [], currentFile: null };
+      const sampleIssues = [
+        ["missing_value", "high", "Missing required field(s): transaction_id.", "", "", 7],
+        ["duplicate_transaction", "high", "Duplicate transaction detected using transaction ID, account, date, and amount.", "", "{transaction_id: TXN-1002, account_number: ACC-9001, date: 2026-01-03, amount: 1200}", 3],
+        ["sum_validation", "high", "Column total does not match reported total.", "12300.00", "5300.00 (difference 7000.00)", null],
+        ["subtotal_validation", "medium", "Subtotal mismatch for group business.", "9300.00", "3100.00", null],
+        ["balance_validation", "high", "Opening balance plus credits minus debits does not equal closing balance.", "17300.00", "10300.00", null],
+        ["anomaly_iqr", "high", "Transaction amount is outside the interquartile range.", "-612.50 to 2287.50", "9000.00", 6]
+      ];
+      function show(view) {
+        for (const section of document.querySelectorAll("main > section")) section.classList.add("hidden");
+        document.getElementById(view).classList.remove("hidden");
+        for (const button of document.querySelectorAll("nav button")) button.classList.toggle("active", button.dataset.view === view);
+        renderStats();
+        renderHistory();
+      }
+      function renderStats() {
+        document.getElementById("files").textContent = state.files.length;
+        document.getElementById("runs").textContent = state.runs.length;
+        document.getElementById("passed").textContent = state.runs.filter((run) => run.status === "passed").length;
+        document.getElementById("failed").textContent = state.runs.filter((run) => run.status === "failed").length;
+      }
+      function validateFile(file) {
+        const issues = sampleIssues.map((issue, index) => ({ id: index + 1, type: issue[0], severity: issue[1], description: issue[2], expected: issue[3], actual: issue[4], row: issue[5] }));
+        const run = { file: file.name, date: new Date(), status: issues.length ? "failed" : "passed", passed: 0, failed: issues.length, total: issues.length, issues };
+        state.files.push(file.name);
+        state.runs.unshift(run);
+        renderResult(run);
+        show("results");
+      }
+      function renderResult(run) {
+        document.getElementById("resultFile").textContent = run.file;
+        document.getElementById("status").textContent = run.status[0].toUpperCase() + run.status.slice(1);
+        document.getElementById("passedChecks").textContent = run.passed;
+        document.getElementById("failedChecks").textContent = run.failed;
+        document.getElementById("totalChecks").textContent = run.total;
+        document.getElementById("issues").innerHTML = run.issues.map((issue) => `<tr><td>${issue.type}</td><td><span class="badge ${issue.severity}">${issue.severity}</span></td><td>${issue.description}</td><td>${issue.expected || "-"}</td><td>${issue.actual || "-"}</td></tr>`).join("");
+      }
+      function renderHistory() {
+        const rows = state.runs.map((run) => `<tr><td>${run.file}</td><td>${run.date.toLocaleString()}</td><td><span class="badge ${run.status === "failed" ? "high" : "low"}">${run.status}</span></td><td>${run.passed}/${run.total}</td></tr>`);
+        document.getElementById("historyRows").innerHTML = rows.join("") || '<tr><td colspan="4">No validation runs have been completed.</td></tr>';
+      }
+      function downloadReport() {
+        const run = state.runs[0];
+        if (!run) return;
+        const lines = ["BankDoc Verify Validation Report", "", `File: ${run.file}`, `Status: ${run.status}`, `Checks: ${run.passed} passed / ${run.failed} failed / ${run.total} total`, "", "Issues:", ...run.issues.map((issue) => `- [${issue.severity}] ${issue.type}: ${issue.description}`)];
+        const blob = new Blob([lines.join("\\n")], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "validation-report.txt";
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+      document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => show(button.dataset.view)));
+      document.getElementById("select").addEventListener("click", () => document.getElementById("file").click());
+      document.getElementById("file").addEventListener("change", (event) => {
+        state.currentFile = event.target.files[0];
+        document.getElementById("selected").textContent = state.currentFile ? state.currentFile.name : "";
+        document.getElementById("selected").classList.toggle("hidden", !state.currentFile);
+        document.getElementById("validate").disabled = !state.currentFile;
+      });
+      document.getElementById("validate").addEventListener("click", () => state.currentFile && validateFile(state.currentFile));
+      document.getElementById("download").addEventListener("click", downloadReport);
+      const drop = document.getElementById("drop");
+      drop.addEventListener("dragover", (event) => { event.preventDefault(); drop.classList.add("drag"); });
+      drop.addEventListener("dragleave", () => drop.classList.remove("drag"));
+      drop.addEventListener("drop", (event) => {
+        event.preventDefault();
+        drop.classList.remove("drag");
+        state.currentFile = event.dataTransfer.files[0];
+        document.getElementById("selected").textContent = state.currentFile ? state.currentFile.name : "";
+        document.getElementById("selected").classList.toggle("hidden", !state.currentFile);
+        document.getElementById("validate").disabled = !state.currentFile;
+      });
+      show("dashboard");
+    </script>
+  </body>
+</html>
