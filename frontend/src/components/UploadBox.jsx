@@ -14,9 +14,8 @@ export default function UploadBox({ onUpload, busy }) {
 
   return (
     <div
-      className={`rounded-lg border-2 border-dashed bg-white p-8 text-center ${
-        dragging ? "border-bank-blue bg-blue-50" : "border-bank-line"
-      }`}
+      className={`rounded-lg border-2 border-dashed bg-white p-8 text-center ${dragging ? "border-bank-blue bg-blue-50" : "border-bank-line"
+        }`}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -31,7 +30,7 @@ export default function UploadBox({ onUpload, busy }) {
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        accept=".pdf,.xlsx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
         className="hidden"
         onChange={(event) => chooseFile(event.target.files[0])}
       />

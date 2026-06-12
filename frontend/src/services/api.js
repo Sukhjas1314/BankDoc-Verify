@@ -40,8 +40,11 @@ export function extractReport(uploadedFileId) {
   return api.post("/extract/", { uploaded_file_id: uploadedFileId });
 }
 
-export function validateReport(uploadedFileId) {
-  return api.post("/validate/", { uploaded_file_id: uploadedFileId });
+export function validateReport(uploadedFileId, selectedColumns = []) {
+  return api.post("/validate/", {
+    uploaded_file_id: uploadedFileId,
+    selected_columns: selectedColumns,
+  });
 }
 
 export function getHistory() {

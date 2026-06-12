@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pandas as pd
 from django.conf import settings
 from django.core.files import File
 from django.http import FileResponse
@@ -18,13 +19,48 @@ from .services.report_generator import generate_validation_report
 from .services.validator import BankingValidator
 
 MAX_UPLOAD_SIZE = 25 * 1024 * 1024
-ALLOWED_EXTENSIONS = {".pdf", ".xlsx"}
+ALLOWED_EXTENSIONS = {".pdf", ".xlsx", ".txt", ".csv"}
+
+
+def _summarize_frames(frames: list[pd.DataFrame], selected_columns: list[str]) -> dict:
+    selected = [column.strip().lower().replace(" ", "_") for column in selected_columns if isinstance(column, str)]
+    if not selected:
+        return {}
+
+    matched_frames = [frame for frame in frames if all(column in frame.columns for column in selected)]
+    if not matched_frames:
+        return {"columns": selected, "distinct_values": {column: 0 for column in selected}, "groups": []}
+
+    combined_selected = pd.concat([frame[selected].copy() for frame in matched_frames], ignore_index=True)
+    combined_full = pd.concat(matched_frames, ignore_index=True)
+    grouped = combined_selected.groupby(selected).size().reset_index(name="count")
+    distinct_values = {column: int(combined_selected[column].nunique(dropna=True)) for column in selected}
+    groups = []
+    for _, row in grouped.iterrows():
+        mask = pd.Series(True, index=combined_full.index)
+        for column in selected:
+            value = row[column]
+            if pd.isna(value):
+                mask &= combined_full[column].isna()
+            else:
+                mask &= combined_full[column] == value
+
+        group_rows = combined_full[mask].fillna("").to_dict(orient="records")
+        groups.append(
+            {
+                "group": {column: (row[column] if not pd.isna(row[column]) else None) for column in selected},
+                "count": int(row["count"]),
+                "rows": group_rows,
+            }
+        )
+    all_columns = list(combined_full.columns)
+    return {"columns": selected, "distinct_values": distinct_values, "groups": groups, "all_columns": all_columns}
 
 
 def _validate_upload(uploaded_file):
     suffix = Path(uploaded_file.name).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
-        return "Only PDF and XLSX files are accepted."
+        return "Only PDF, XLSX, TXT, and CSV files are accepted."
     if uploaded_file.size > MAX_UPLOAD_SIZE:
         return "File exceeds the 25 MB upload limit."
     return None
@@ -69,11 +105,18 @@ def extract_file(request):
 @csrf_exempt
 def validate_file(request):
     uploaded = get_object_or_404(UploadedFile, pk=request.data.get("uploaded_file_id"))
+    selected_columns = request.data.get("selected_columns", []) or []
+    if isinstance(selected_columns, str):
+        selected_columns = [selected_columns]
+    if not isinstance(selected_columns, list):
+        selected_columns = list(selected_columns)
+
     try:
         frames = extract_tables(uploaded.file_path.path)
         validator = BankingValidator()
         findings, total_checks = validator.validate(frames)
         findings.extend(AnomalyDetector().detect(frames))
+        summary = _summarize_frames(frames, selected_columns)
     except Exception as exc:
         uploaded.status = UploadedFile.Status.FAILED
         uploaded.save(update_fields=["status"])
@@ -109,7 +152,11 @@ def validate_file(request):
         run.report_file.save(report_path.name, File(handle), save=True)
     uploaded.status = UploadedFile.Status.VALIDATED
     uploaded.save(update_fields=["status"])
-    return Response(ValidationRunSerializer(run).data, status=status.HTTP_201_CREATED)
+
+    run_data = ValidationRunSerializer(run).data
+    if summary:
+        run_data["summary"] = summary
+    return Response(run_data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
